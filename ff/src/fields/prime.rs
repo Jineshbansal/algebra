@@ -82,15 +82,25 @@ pub trait PrimeField:
         // Guaranteed to not be None, as the input is less than the modulus size.
         let mut res = Self::from_random_bytes(&bytes_to_directly_convert).unwrap();
 
-        // Update the result, byte by byte.
+        // Update the result, parsing 8 bytes at a time as a u64.
         // We go through existing field arithmetic, which handles the reduction.
-        // TODO: If we need higher speeds, parse more bytes at once, or implement
-        // modular multiplication by a u64
         let window_size = Self::from(256u64);
-        for byte in bytes.iter().rev() {
+        let u64_window = Self::from(1u64 << 32).square(); // 2^64
+
+        let remainder = bytes.len() % 8;
+        let (full_u64_bytes, remainder_bytes) = bytes.split_at(bytes.len() - remainder);
+
+        // Process the remainder bytes (0 to 7, most significant) one by one.
+        for &byte in remainder_bytes.iter().rev() {
             res *= window_size;
-            res += Self::from(*byte);
+            res += Self::from(byte);
         }
-        res
+
+        // Process full 8-byte chunks from most significant to least significant.
+        for chunk in full_u64_bytes.rchunks_exact(8) {
+            res *= u64_window;
+            res += Self::from(u64::from_le_bytes(chunk.try_into().unwrap()));
+        }
+        res 
     }
 }
