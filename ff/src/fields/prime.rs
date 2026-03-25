@@ -101,6 +101,6 @@ pub trait PrimeField:
             res *= u64_window;
             res += Self::from(u64::from_le_bytes(chunk.try_into().unwrap()));
         }
-        res 
+        res
     }
 }
